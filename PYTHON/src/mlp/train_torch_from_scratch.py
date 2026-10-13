@@ -39,24 +39,35 @@ class PerceptronList(nn.Module):
 		return self.layers(sample)
 	def calc_loss(self, sample, loss, target):
 		return loss(self(sample), target)
-
-model = PerceptronList([784, 8, 8, 10]) #How do we find the number 784 just using the data set, if I didn't know it's contents beforehand?
-optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
-loss_fn = nn.MSELoss()
-
-
-for epoch in range(num_epochs):
-	for images, labels in loader:
-		x = images.flatten(start_dim=1)
-		y = nn.functional.one_hot(labels, num_classes=10).float() #Why do we need to make this a float; what does one_hot encoder do? why couldn't we have just used the 'labels', which is given to us?
-
-		optimizer.zero_grad()
-		prediction = model(x)
-		loss = loss_fn(prediction, y)
-		loss.backward()
-		optimizer.step()
+if __name__ == "__main__":
+	global model
+	model = PerceptronList([784, 8, 8, 10]) #How do we find the number 784 just using the data set, if I didn't know it's contents beforehand?
+	optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
+	loss_fn = nn.MSELoss()
 
 
-#saving the model:
-torch.save(model.state.dict(), "model.pth") #What is .pth file extension?
+	for epoch in range(num_epochs):
+		for images, labels in loader:
+			x = images.flatten(start_dim=1)
+			y = nn.functional.one_hot(labels, num_classes=10).float() #Why do we need to make this a float; what does one_hot encoder do? why couldn't we have just used the 'labels', which is given to us?
 
+			optimizer.zero_grad()
+			prediction = model(x)
+			loss = loss_fn(prediction, y)
+			loss.backward()
+			optimizer.step()
+
+#LOOK OVER THIS TOMMORROW
+
+test_dataset = MNIST(root="./data", train=False, download=True, transform=ToTensor())
+test_loader = DataLoader(test_dataset, batch_size=64, shuffle=False)
+
+model.eval()
+correct = 0
+with torch.no_grad():
+    for images, labels in test_loader:
+        x = images.flatten(start_dim=1)
+        prediction = model(x)
+        correct += (prediction.argmax(dim=1) == labels).sum().item()
+
+print(correct / len(test_dataset))
