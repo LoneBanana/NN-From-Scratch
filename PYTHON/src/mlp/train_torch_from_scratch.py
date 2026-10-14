@@ -3,10 +3,12 @@ from torch import nn
 from torch.utils.data import DataLoader
 from torchvision.datasets import MNIST
 from torchvision.transforms import ToTensor
+
+
 dataset = MNIST(root="./data", train=True, download=True, transform=ToTensor())
 loader = DataLoader(dataset, batch_size=64, shuffle=True) 
 
-num_epochs = 100
+num_epochs = 10
 
 """
 
@@ -17,7 +19,7 @@ Interesting remarks:
 
 2. If you were to build this on your own, make sure you wrote the program sort of like this; you would, ideally, want the functions to be mapped out like this; then, you can build the structs, functions, etc... that implement all the linear algebra stuff
 
-3. You should never call self.forward() directly, becasue that bypasses the PyTorch registry
+3. You should never call self.forward() directly, becasue that bypasses the PyTorch hooks and tracking of functions and gradients could get messed up
 
 """
 
@@ -28,7 +30,8 @@ class Perceptron(nn.Module):
 	
 	def forward(self, sample):
 		z = self.linear(sample)
-		return torch.sigmoid(z)
+		return torch.maximum(torch.zeros_like(z), z) # Note: this is ReLU activation; THERE ARE BETTER WAYS TO DEFINE A MODEL
+		# All you would need to do is perform nn.Sequential(nn.Linear, nn.ReLU, nn.Linear, nn.ReLU, etc...); you would just keep repeating these
 
 
 class PerceptronList(nn.Module):
@@ -39,23 +42,21 @@ class PerceptronList(nn.Module):
 		return self.layers(sample)
 	def calc_loss(self, sample, loss, target):
 		return loss(self(sample), target)
-if __name__ == "__main__":
-	global model
-	model = PerceptronList([784, 8, 8, 10]) #How do we find the number 784 just using the data set, if I didn't know it's contents beforehand?
-	optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
-	loss_fn = nn.MSELoss()
+
+model = PerceptronList([784, 64, 64, 10]) #How do we find the number 784 just using the data set, if I didn't know it's contents beforehand?
+optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
+loss_fn = nn.MSELoss()
 
 
-	for epoch in range(num_epochs):
-		for images, labels in loader:
-			x = images.flatten(start_dim=1)
-			y = nn.functional.one_hot(labels, num_classes=10).float() #Why do we need to make this a float; what does one_hot encoder do? why couldn't we have just used the 'labels', which is given to us?
-
-			optimizer.zero_grad()
-			prediction = model(x)
-			loss = loss_fn(prediction, y)
-			loss.backward()
-			optimizer.step()
+for epoch in range(num_epochs):
+	for images, labels in loader:
+		x = images.flatten(start_dim=1)
+		y = nn.functional.one_hot(labels, num_classes=10).float() #Why do we need to make this a float; what does one_hot encoder do? why couldn't we have just used the 'labels', which is given to us?
+		optimizer.zero_grad()
+		prediction = model(x)
+		loss = loss_fn(prediction, y)
+		loss.backward()
+		optimizer.step()
 
 #LOOK OVER THIS TOMMORROW
 
